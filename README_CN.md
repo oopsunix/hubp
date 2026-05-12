@@ -1,11 +1,11 @@
 <div align="center">
 <h1>hubp</h1>
 
-<p>`hubp` 是一款使用 Rust 编写的高性能多协议代理服务。它为 GitHub、Docker Registry 和 Hugging Face 等常用开发者资源提供无缝的加速与代理功能。`hubp` 充分利用了 [Axum](https://github.com/tokio-rs/axum) 和 [Tokio](https://github.com/tokio-rs/tokio) 的异步特性，旨在提供极高的运行效率与安全性。
+<p> hubp 是一款使用 Rust 编写的高性能多协议代理服务。它为 GitHub、Docker Registry 和 Hugging Face 等常用开发者资源提供无缝的加速与代理功能。hubp 充分利用了 [Axum](https://github.com/tokio-rs/axum) 和 [Tokio](https://github.com/tokio-rs/tokio) 的异步特性，旨在提供极高的运行效率与安全性。
 </p>
 
 <p>
-  <a href="https://mit-license.org/">
+  <a href="https://www.apache.org/licenses/LICENSE-2.0">
     <img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat" alt="License">
   </a>
   <a href="https://github.com/oopsunix/hubp">
@@ -21,7 +21,7 @@
 
 <div>
 
-中文 ｜ [English](README_EN.md)
+中文 ｜ [English](README.md)
 
 </div>
 </div>
@@ -86,7 +86,10 @@ cargo build --release
 
 ## ⚙️ 配置说明
 
-`hubp` 通过 `config.yaml` 进行配置。以下是一个完整的配置示例：
+`hubp` 通过 `config.yaml` 进行配置。
+
+<details>
+<summary>点击展开配置模板</summary>
 
 ```yaml
 server:
@@ -96,7 +99,7 @@ server:
 
 # --- 访问控制 ---
 access:
-  proxy: "" # 上游代理 (例如: "http://127.0.0.1:7890")
+  proxy: "" # 上游代理 (例如: "http://127.0.0.1:7890" 或 "socks5://user:pass@127.0.0.1:1080")
   white_list: [] # 允许访问的关键字/仓库
   black_list:
     - "baduser/*"
@@ -124,6 +127,7 @@ docker:
     enabled: true
     defaultTTL: "20m"
 ```
+</details>
 
 ---
 
@@ -131,17 +135,63 @@ docker:
 
 ### GitHub 代理
 将代理地址添加到任何 GitHub URL 之前：
-- **Raw 文件**: `http://your-proxy:45000/https://raw.githubusercontent.com/user/repo/branch/file`
-- **Release 附件**: `http://your-proxy:45000/https://github.com/user/repo/releases/download/v1.0/asset.zip`
-- **Git 克隆**: `git clone http://your-proxy:45000/https://github.com/user/repo.git`
+
+| 资源类型 | 原始 URL | 代理后 URL |
+| :--- | :--- | :--- |
+| **Raw 文件** | `https://raw.githubusercontent.com/user/repo/branch/file` | `https://your-domain.com/https://raw.githubusercontent.com/user/repo/branch/file` |
+| **Release 附件** | `https://github.com/user/repo/releases/download/v1/asset.zip` | `https://your-domain.com/https://github.com/user/repo/releases/download/v1/asset.zip` |
+| **Git 克隆** | `https://github.com/user/repo.git` | `https://your-domain.com/https://github.com/user/repo.git` |
+| **存档文件** | `https://github.com/user/repo/archive/refs/heads/main.zip` | `https://your-domain.com/https://github.com/user/repo/archive/refs/heads/main.zip` |
+
+**命令行示例**:
+```bash
+# Wget 下载
+wget https://your-domain.com/https://github.com/user/repo/releases/download/v1/asset.zip
+
+# Git 克隆
+git clone https://your-domain.com/https://github.com/user/repo.git
+
+# Go Get 加速
+GOPROXY=https://goproxy.cn,direct go get -v github.com/user/repo
+# 或全局替换 GitHub 地址
+git config --global url."https://your-domain.com/https://github.com/".insteadOf "https://github.com/"
+```
 
 ### Docker 镜像加速
-配置 Docker 守护进程或直接在拉取时使用代理地址：
-- **拉取镜像**: `docker pull your-proxy:45000/library/alpine` (将代理至 `docker.io`)
-- **其他注册表**: 作为前缀使用，例如 `your-proxy:45000/ghcr.io/user/image`
+`hubp` 支持多种 Docker 注册表的透明代理。
+
+#### 1. 直接拉取 (作为前缀)
+- **Docker Hub**: `docker pull your-domain.com/library/alpine`
+- **GHCR**: `docker pull your-domain.com/ghcr.io/oopsunix/hubp:latest`
+- **Quay**: `docker pull your-domain.com/quay.io/coreos/etcd:latest`
+- **GCR**: `docker pull your-domain.com/gcr.io/google-containers/pause:latest`
+
+#### 2. 配置为全局镜像源
+将 `hubp` 配置为默认镜像加速器，编辑 `/etc/docker/daemon.json`：
+
+```json
+{
+  "registry-mirrors": [
+    "https://your-domain.com"
+  ]
+}
+```
+重启 Docker 服务：`sudo systemctl restart docker`。之后即可直接拉取：`docker pull alpine`。
 
 ### Hugging Face 代理
-- **模型下载**: `http://your-proxy:45000/https://huggingface.co/gpt2/resolve/main/config.json`
+加速下载 Hugging Face 上的模型和数据集。
+
+- **直接下载**: `https://your-domain.com/https://huggingface.co/gpt2/resolve/main/config.json`
+- **Git 克隆**: `git clone https://your-domain.com/https://huggingface.co/gpt2`
+
+**使用 `huggingface-cli`**:
+```bash
+# 设置环境变量
+export HF_ENDPOINT=https://your-domain.com
+
+# 下载模型
+huggingface-cli download --resume-download gpt2
+```
 
 ---
 
@@ -150,7 +200,7 @@ docker:
 ### 项目结构
 - `src/core.rs`: 核心配置与全局状态管理。
 - `src/module/`: 各类代理协议的实现（GitHub, Docker, HF）。
-- `src/handler.rs`: 主请求处理器与中间件逻辑。
+- `src/handler.rs`: 主请求处理器与中间件 logic。
 - `src/tasks.rs`: 后台任务（GeoIP 更新、配置热重载等）。
 
 ### 运行测试
@@ -168,7 +218,7 @@ cargo build --release
 
 ## 📜 开源协议
 
-本项目基于 [MIT License](LICENSE) 协议开源。
+本项目基于 [Apache License 2.0](LICENSE) 协议开源。
 
 ---
 

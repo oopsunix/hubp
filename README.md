@@ -1,11 +1,11 @@
 <div align="center">
 <h1>hubp</h1>
 
-<p>`hubp` is a high-performance, multi-protocol proxy service written in Rust. It provides seamless acceleration and proxying for popular developer resources including GitHub, Docker Registry, and Hugging Face. Designed with efficiency and security in mind, `hubp` leverages the asynchronous power of [Axum](https://github.com/tokio-rs/axum) and [Tokio](https://github.com/tokio-rs/tokio).
+<p>hubp is a high-performance, multi-protocol proxy service written in Rust. It provides seamless acceleration and proxying for popular developer resources including GitHub, Docker Registry, and Hugging Face. Designed with efficiency and security in mind, hubp leverages the asynchronous power of [Axum](https://github.com/tokio-rs/axum) and [Tokio](https://github.com/tokio-rs/tokio).
 </p>
 
 <p>
-  <a href="https://mit-license.org/">
+  <a href="https://www.apache.org/licenses/LICENSE-2.0">
     <img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat" alt="License">
   </a>
   <a href="https://github.com/oopsunix/hubp">
@@ -86,7 +86,10 @@ cargo build --release
 
 ## ⚙️ Configuration
 
-`hubp` is configured via `config.yaml`. Below is a comprehensive example:
+`hubp` is configured via `config.yaml`.
+
+<details>
+<summary>View Configuration Template</summary>
 
 ```yaml
 server:
@@ -96,7 +99,7 @@ server:
 
 # --- Access Control ---
 access:
-  proxy: "" # Upstream proxy (e.g., "http://127.0.0.1:7890")
+  proxy: "" # Upstream proxy (e.g., "http://127.0.0.1:7890" or "socks5://user:pass@127.0.0.1:1080")
   white_list: [] # Allowed keywords/repos
   black_list:
     - "baduser/*"
@@ -124,6 +127,7 @@ docker:
     enabled: true
     defaultTTL: "20m"
 ```
+</details>
 
 ---
 
@@ -131,17 +135,63 @@ docker:
 
 ### GitHub Proxy
 Prepend your proxy address to any GitHub URL:
-- **Raw File**: `http://your-proxy:45000/https://raw.githubusercontent.com/user/repo/branch/file`
-- **Release**: `http://your-proxy:45000/https://github.com/user/repo/releases/download/v1.0/asset.zip`
-- **Git Clone**: `git clone http://your-proxy:45000/https://github.com/user/repo.git`
+
+| Resource Type | Original URL | Proxy URL |
+| :--- | :--- | :--- |
+| **Raw File** | `https://raw.githubusercontent.com/user/repo/branch/file` | `https://your-domain.com/https://raw.githubusercontent.com/user/repo/branch/file` |
+| **Release** | `https://github.com/user/repo/releases/download/v1/asset.zip` | `https://your-domain.com/https://github.com/user/repo/releases/download/v1/asset.zip` |
+| **Git Clone** | `https://github.com/user/repo.git` | `https://your-domain.com/https://github.com/user/repo.git` |
+| **Archive** | `https://github.com/user/repo/archive/refs/heads/main.zip` | `https://your-domain.com/https://github.com/user/repo/archive/refs/heads/main.zip` |
+
+**CLI Examples**:
+```bash
+# Wget
+wget https://your-domain.com/https://github.com/user/repo/releases/download/v1/asset.zip
+
+# Git Clone
+git clone https://your-domain.com/https://github.com/user/repo.git
+
+# Go Get
+GOPROXY=https://goproxy.cn,direct go get -v github.com/user/repo
+# or use hubp as proxy
+git config --global url."https://your-domain.com/https://github.com/".insteadOf "https://github.com/"
+```
 
 ### Docker Registry Proxy
-Configure your Docker daemon or use the proxy address directly:
-- **Pull Image**: `docker pull your-proxy:45000/library/alpine` (Proxies to `docker.io`)
-- **Other Registries**: Use as a prefix, e.g., `your-proxy:45000/ghcr.io/user/image`
+`hubp` supports transparent proxying for multiple registries.
+
+#### 1. Individual Pull
+- **Docker Hub**: `docker pull your-domain.com/library/alpine`
+- **GHCR**: `docker pull your-domain.com/ghcr.io/oopsunix/hubp:latest`
+- **Quay**: `docker pull your-domain.com/quay.io/coreos/etcd:latest`
+- **GCR**: `docker pull your-domain.com/gcr.io/google-containers/pause:latest`
+
+#### 2. Global Registry Mirror
+To use `hubp` as your default Docker mirror, edit `/etc/docker/daemon.json`:
+
+```json
+{
+  "registry-mirrors": [
+    "https://your-domain.com"
+  ]
+}
+```
+Then restart Docker: `sudo systemctl restart docker`. Now you can pull directly: `docker pull alpine`.
 
 ### Hugging Face Proxy
-- **Model Download**: `http://your-proxy:45000/https://huggingface.co/gpt2/resolve/main/config.json`
+Accelerate model and dataset downloads from Hugging Face.
+
+- **File Resolve**: `https://your-domain.com/https://huggingface.co/gpt2/resolve/main/config.json`
+- **Git Clone**: `git clone https://your-domain.com/https://huggingface.co/gpt2`
+
+**Using `huggingface-cli`**:
+```bash
+# Set environment variable
+export HF_ENDPOINT=https://your-domain.com
+
+# Download model
+huggingface-cli download --resume-download gpt2
+```
 
 ---
 
@@ -168,7 +218,7 @@ cargo build --release
 
 ## 📜 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
