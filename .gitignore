@@ -1,0 +1,39 @@
+# Mac OS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# IntelliJ IDEA
+.idea/
+
+# Maven
+.mvn/
+target/
+
+# Gradle
+.gradle/
+build/
+
+# Node
+node_modules/
+
+# Environments
+.env
+.venv
+
+# reference
+reference/
+
+# Logs
+logs/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# vercel
+.vercel
