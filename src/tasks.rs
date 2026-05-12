@@ -1,10 +1,39 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use chrono::Utc;
 use reqwest::{Client, Proxy};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use maxminddb::Reader;
 use crate::core::{load_config, AppState};
+
+/// 发起对核心站点的连通性测试
+pub async fn test_connectivity(client: &Client) {
+    let targets = [
+        ("GitHub", "https://github.com"),
+        ("Docker Hub", "https://registry-1.docker.io/v2/"),
+        ("Hugging Face", "https://huggingface.co"),
+    ];
+
+    info!("Starting startup connectivity tests...");
+
+    for (name, url) in targets {
+        let start = Instant::now();
+        match client.get(url).timeout(Duration::from_secs(10)).send().await {
+            Ok(resp) => {
+                let status = resp.status();
+                // 401 for Docker Registry is expected and counts as success (reachable)
+                if status.is_success() || status == reqwest::StatusCode::UNAUTHORIZED {
+                    info!("Connectivity to {}: OK ({}ms)", name, start.elapsed().as_millis());
+                } else {
+                    warn!("Connectivity to {}: UNEXPECTED STATUS {} ({}ms)", name, status, start.elapsed().as_millis());
+                }
+            }
+            Err(e) => {
+                error!("Connectivity to {}: FAILED - {}", name, e);
+            }
+        }
+    }
+}
 
 /// 创建 HTTP 客户端的统一辅助函数
 pub fn build_http_client(proxy_url: &str) -> Client {
@@ -65,7 +94,7 @@ pub async fn ensure_geoip_db(state: Arc<AppState>) {
 
 /// 下载 GeoIP 数据库
 async fn download_geoip_db(state: Arc<AppState>, db_path: &str, db_url: &str) {
-    let client = Client::new();
+    let client = state.http_client.read().await.clone();
     match client.get(db_url).send().await {
         Ok(resp) => {
             if resp.status().is_success() {

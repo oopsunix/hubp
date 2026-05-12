@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.7", features = ["macros"] }
 tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.12", default-features = false, features = ["stream", "json", "http2", "rustls-tls", "brotli", "gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["stream", "json", "http2", "rustls-tls", "brotli", "gzip", "socks"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 regex = "1.0"

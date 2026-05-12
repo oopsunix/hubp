@@ -47,6 +47,7 @@ jobs:
         with:
           bin: hubp
           target: ${{ matrix.target }}
+          include: LICENSE,README.md,README_CN.md
           tar: all
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -20,16 +20,27 @@ use crate::module::github_web::GithubWebProvider;
 use crate::module::docker::DockerProvider;
 use crate::module::huggingface::HuggingfaceProvider;
 use crate::route::create_router;
-use crate::tasks::{spawn_cleanup_task, spawn_config_reloader, build_http_client, ensure_geoip_db};
+use crate::tasks::{spawn_cleanup_task, spawn_config_reloader, build_http_client, ensure_geoip_db, test_connectivity};
 
 /// 程序主入口
 #[tokio::main]
 async fn main() {
     // 1. 加载初始配置
-    let initial_config = load_config().await.unwrap_or_default();
+    let initial_config = match load_config().await {
+        Ok(cfg) => cfg,
+        Err(e) if e == "NOT_FOUND" => {
+            println!("Configuration file 'config.yaml' not found. A template has been generated.");
+            println!("Please edit 'config.yaml' and restart the program.");
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("Failed to load configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     // 2. 初始化日志系统
-    let filter = if initial_config.debug {
+    let filter = if initial_config.server.debug {
         tracing_subscriber::EnvFilter::new("debug")
     } else {
         tracing_subscriber::EnvFilter::new("info")
@@ -40,13 +51,22 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    info!("Log level initialized. Debug mode: {}", initial_config.debug);
+    info!("Log level initialized. Debug mode: {}", initial_config.server.debug);
 
     // 3. 初始化全局状态
     let http_client = build_http_client(&initial_config.access.proxy);
+
+    // 4. 启动连通性测试 (不阻塞主流程)
+    {
+        let client_clone = http_client.clone();
+        tokio::spawn(async move {
+            test_connectivity(&client_clone).await;
+        });
+    }
     
+    // 5. 初始化全局状态
     let state = Arc::new(AppState {
-        config: RwLock::new(initial_config),
+        config: RwLock::new(initial_config.clone()),
         ip_requests: DashMap::new(),
         http_client: RwLock::new(http_client),
         providers: vec![
@@ -60,7 +80,7 @@ async fn main() {
         geoip_reader: RwLock::new(None),
     });
 
-    // 4. 异步确保 GeoIP 数据库就绪 (如果启用)
+    // 6. 异步确保 GeoIP 数据库就绪 (如果启用)
     {
         let config = state.config.read().await;
         if config.access.geoip.enabled {
@@ -71,15 +91,18 @@ async fn main() {
         }
     }
 
-    // 5. 启动后台调度任务
+    // 7. 启动后台调度任务
     spawn_config_reloader(state.clone());
     spawn_cleanup_task(state.clone());
 
-    // 6. 构建路由
+    // 8. 构建路由
     let app = create_router(state);
 
-    // 7. 启动 HTTP 服务
-    let addr = SocketAddr::from(([0, 0, 0, 0], 45000));
+    // 9. 启动 HTTP 服务
+    let addr: SocketAddr = format!("{}:{}", initial_config.server.host, initial_config.server.port)
+        .parse()
+        .expect("Invalid server host or port in config.yaml");
+    
     info!("start HTTP server @ {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();

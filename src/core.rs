@@ -13,7 +13,7 @@ use maxminddb::Reader;
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Config {
     #[serde(default)]
-    pub debug: bool,
+    pub server: ServerConfig,
     #[serde(default)]
     pub access: AccessConfig,
     #[serde(default)]
@@ -69,6 +69,19 @@ pub struct DockerConfig {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
+pub struct ServerConfig {
+    #[serde(default = "default_host")]
+    pub host: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
+    #[serde(default)]
+    pub debug: bool,
+}
+
+fn default_host() -> String { "0.0.0.0".to_string() }
+fn default_port() -> u16 { 45000 }
+
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct TokenCacheConfig {
     #[serde(default)]
     pub enabled: bool,
@@ -105,8 +118,104 @@ pub struct RequestLimitConfig {
 
 fn default_period_hours() -> f64 { 3.0 }
 
+pub const CONFIG_TEMPLATE: &str = r#"server:
+  host: "0.0.0.0"
+  port: 45000
+  debug: false
+
+# --- 访问控制配置 ---
+access:
+  # 上游代理地址 (可选)，支持 http, https, socks5
+  # 格式示例:
+  #   - HTTP 无认证: "http://127.0.0.1:7890"
+  #   - HTTP 带认证: "http://user:pass@127.0.0.1:7890"
+  #   - SOCKS5 无认证: "socks5://127.0.0.1:1080"
+  #   - SOCKS5 带认证: "socks5://user:pass@127.0.0.1:1080"
+  proxy: ""
+  white_list: []
+  black_list:
+    - "user/repo"
+    - "*/repo"
+    - "user/*"
+  
+  # GeoIP 国家限制 (默认只允许中国 IP 访问)
+  geoip:
+    enabled: false
+    databasePath: "GeoLite2-Country.mmdb"
+    databaseUrl: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb"
+    databaseUpdateDays: 30
+    allowedCountries:
+      - "CN"
+
+# --- 路由与速率限制配置 ---
+request_limit:
+  limit_rate: 1000
+  limit_size: 10240
+  periodHours: 3.0
+  white_list:
+    - "127.0.0.1"
+    - "172.17.0.0/24"
+    - "192.168.1.0/24"
+  black_list:
+    - "192.168.167.1"
+
+# --- Docker 镜像代理专项配置 ---
+docker:
+  tokenCache:
+    enabled: true
+    defaultTTL: "20m"
+
+  registries:
+    "docker.io":
+      enabled: true
+      upstream: "registry-1.docker.io"
+      authHost: "auth.docker.io/token"
+      authType: "docker"
+    "ghcr.io":
+      enabled: true
+      upstream: "ghcr.io"
+      authHost: "ghcr.io/token"
+      authType: "github"
+    "gcr.io":
+      enabled: true
+      upstream: "gcr.io"
+      authHost: "gcr.io/v2/token"
+      authType: "google"
+    "quay.io":
+      enabled: true
+      upstream: "quay.io"
+      authHost: "quay.io/v2/auth"
+      authType: "quay"
+    "registry.k8s.io":
+      enabled: true
+      upstream: "registry.k8s.io"
+      authHost: "registry.k8s.io"
+      authType: "anonymous"
+"#;
+
 pub async fn load_config() -> Result<Config, String> {
-    let content = tokio::fs::read_to_string("config.yaml")
+    let paths = ["config.yaml", "config.yml"];
+    let mut existing_path = None;
+
+    for path in &paths {
+        if std::path::Path::new(path).exists() {
+            existing_path = Some(*path);
+            break;
+        }
+    }
+
+    let config_path = match existing_path {
+        Some(path) => path,
+        None => {
+            let default_path = "config.yaml";
+            tokio::fs::write(default_path, CONFIG_TEMPLATE)
+                .await
+                .map_err(|e| format!("Failed to write config template: {}", e))?;
+            return Err("NOT_FOUND".to_string());
+        }
+    };
+
+    let content = tokio::fs::read_to_string(config_path)
         .await
         .map_err(|e| e.to_string())?;
     let config: Config = serde_yaml::from_str(&content).map_err(|e| e.to_string())?;

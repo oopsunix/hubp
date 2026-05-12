@@ -89,7 +89,10 @@ cargo build --release
 `hubp` is configured via `config.yaml`. Below is a comprehensive example:
 
 ```yaml
-debug: false
+server:
+  host: "0.0.0.0"
+  port: 45000
+  debug: false
 
 # --- Access Control ---
 access:
