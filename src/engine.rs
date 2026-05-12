@@ -161,14 +161,25 @@ pub async fn custom_logger_engine(
     let latency = start.elapsed();
     let status = response.status();
 
-    tracing::info!(
-        "{} | {:?} | {:?} | {} | {}",
-        status.as_u16(),
-        latency,
-        method,
-        path,
-        user_agent
-    );
+    if status == axum::http::StatusCode::OK {
+        tracing::debug!(
+            "{} | {:?} | {:?} | {} | {}",
+            status.as_u16(),
+            latency,
+            method,
+            path,
+            user_agent
+        );
+    } else {
+        tracing::info!(
+            "{} | {:?} | {:?} | {} | {}",
+            status.as_u16(),
+            latency,
+            method,
+            path,
+            user_agent
+        );
+    }
 
     response
 }

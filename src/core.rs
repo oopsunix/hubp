@@ -134,9 +134,9 @@ access:
   proxy: ""
   white_list: []
   black_list:
-    - "user/repo"
-    - "*/repo"
-    - "user/*"
+    - "baduser/badrepo"
+    - "*/badrepo"
+    - "baduser/*"
   
   # GeoIP 国家限制 (默认只允许中国 IP 访问)
   geoip:
