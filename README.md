@@ -6,16 +6,16 @@
 
 <p>
   <a href="https://mit-license.org/">
-    <img src="https://img.shields.io/github/license/tldrw/Axon?style=flat" alt="License">
+    <img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat" alt="License">
   </a>
-  <a href="https://github.com/tldrw/Axon">
-    <img src="https://img.shields.io/github/stars/tldrw/Axon?style=flat" alt="Stars">
+  <a href="https://github.com/oopsunix/hubp">
+    <img src="https://img.shields.io/github/stars/oopsunix/hubp?style=flat" alt="Stars">
   </a>
-  <a href="https://github.com/tldrw/Axon">
-    <img src="https://img.shields.io/github/forks/tldrw/Axon?style=flat" alt="Forks">
+  <a href="https://github.com/oopsunix/hubp">
+    <img src="https://img.shields.io/github/forks/oopsunix/hubp?style=flat" alt="Forks">
   </a>
-  <a href="https://github.com/tldrw/Axon/releases">
-    <img src="https://img.shields.io/github/v/release/tldrw/Axon?sort=semver" alt="Release">
+  <a href="https://github.com/oopsunix/hubp/releases">
+    <img src="https://img.shields.io/github/v/release/oopsunix/hubp?sort=semver" alt="Release">
   </a>
 </p>
 

@@ -41,6 +41,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      - name: Pre-pull cross image
+        if: contains(matrix.target, 'musl')
+        run: |
+          docker pull ghcr.io/cross-rs/${{ matrix.target }}:0.2.5
       
       - name: Build and Upload
         uses: taiki-e/upload-rust-binary-action@v1
