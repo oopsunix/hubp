@@ -29,6 +29,9 @@ impl GithubProvider {
                 Regex::new(r"^(?:https?://)?api\.github\.com/gists(?:/.*)?$").unwrap(),
                 // 8. 匹配 API 通用路径 (兜底)
                 Regex::new(r"^(?:https?://)?api\.github\.com/(.*)$").unwrap(),
+
+                // 9. 匹配 codeload 下载域名
+                Regex::new(r"^(?:https?://)?codeload\.github\.com/(.*)$").unwrap(),
             ],
         }
     }
@@ -36,7 +39,7 @@ impl GithubProvider {
 
 impl ProxyProvider for GithubProvider {
     fn matches(&self, url: &str) -> bool {
-        self.exps.iter().any(|exp| exp.is_match(url))
+        self.exps.iter().any(|exp| exp.is_match(url)) || url.contains("codeload.github.com")
     }
 
     fn transform(&self, mut url: String, _config: &Config) -> String {
@@ -44,7 +47,7 @@ impl ProxyProvider for GithubProvider {
             url = url.replacen("/blob/", "/raw/", 1);
         }
         if !url.starts_with("http") {
-            let domains = ["github.com", "raw.github", "gist.github", "api.github"];
+            let domains = ["github.com", "raw.github", "gist.github", "api.github", "codeload.github.com"];
             if domains.iter().any(|d| url.starts_with(d)) {
                 url = format!("https://{}", url);
             }
@@ -53,6 +56,9 @@ impl ProxyProvider for GithubProvider {
     }
 
     fn upstream_host(&self, path: &str, _config: &Config) -> Option<String> {
+        if path.contains("codeload.github.com") {
+            return Some("codeload.github.com".to_string());
+        }
         if self.exps[3].is_match(path) {
             return Some("raw.githubusercontent.com".to_string());
         }

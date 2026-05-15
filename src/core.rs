@@ -252,7 +252,7 @@ pub trait ProxyProvider: Send + Sync {
 
     fn handle_response(&self, _headers: &mut HeaderMap, _config: &Config) {}
     
-    fn rewrite_body(&self, _path: &str, _body: String, _config: &Config) -> Option<String> {
+    fn rewrite_body(&self, _path: &str, _body: String, _config: &Config, _req_headers: &HeaderMap) -> Option<String> {
         None
     }
 }

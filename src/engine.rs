@@ -22,7 +22,7 @@ pub async fn do_proxy(
     
     let path = req.uri().path().to_string(); 
     let method = req.method().clone();
-    let headers = req.headers().clone();
+    let req_headers = req.headers().clone();
     let body = req.into_body();
 
     // 1. 构造转发请求
@@ -34,27 +34,25 @@ pub async fn do_proxy(
     let mut proxy_req_builder = proxy_req_builder;
     
     // 2. 处理请求头
-    for (key, value) in headers {
-        if let Some(k) = key {
-            if k == axum::http::header::HOST {
-                continue;
-            }
-            
-            if k == axum::http::header::REFERER {
-                if let (Some(ref p), Ok(_val_str)) = (&provider, value.to_str()) {
-                    let config = state.config.read().await;
-                    if let Some(upstream_host) = p.upstream_host(&path, &config) {
-                        let new_referer = format!("https://{}/", upstream_host);
-                        if let Ok(v) = HeaderValue::from_str(&new_referer) {
-                            proxy_req_builder = proxy_req_builder.header(k, v);
-                            continue;
-                        }
+    for (key, value) in &req_headers {
+        if key == axum::http::header::HOST {
+            continue;
+        }
+        
+        if key == axum::http::header::REFERER {
+            if let (Some(ref p), Ok(_val_str)) = (&provider, value.to_str()) {
+                let config = state.config.read().await;
+                if let Some(upstream_host) = p.upstream_host(&path, &config) {
+                    let new_referer = format!("https://{}/", upstream_host);
+                    if let Ok(v) = HeaderValue::from_str(&new_referer) {
+                        proxy_req_builder = proxy_req_builder.header(key, v);
+                        continue;
                     }
                 }
             }
-            
-            proxy_req_builder = proxy_req_builder.header(k, value);
         }
+        
+        proxy_req_builder = proxy_req_builder.header(key, value.clone());
     }
 
     // 3. 发起请求
@@ -115,14 +113,20 @@ pub async fn do_proxy(
                 }
                 crate::core::ProviderKind::Web => {
                     // 如果是 Web 浏览请求触发的重定向
-                    let next_provider = state.find_provider(&loc_str, crate::core::ProviderKind::Web);
-                    if next_provider.is_some() {
-                        // 如果有 Web Provider 认领（比如跳到了另一个 github 页面），改写为相对路径让浏览器跳
+                    // 1. 优先检查是否重定向到了一个“显式资源”（如 raw 文件、下载链接）
+                    if let Some(_) = state.find_provider(&loc_str, crate::core::ProviderKind::Explicit) {
                         let new_loc = format!("/{}", loc_str);
                         res_headers.insert(axum::http::header::LOCATION, HeaderValue::from_str(&new_loc).unwrap());
                     } else {
-                        // 否则内部跳转
-                        return Box::pin(do_proxy(state.clone(), Request::new(Body::empty()), loc_str, depth + 1, next_provider)).await;
+                        // 2. 否则，看是否有 Web Provider 认领
+                        let next_provider = state.find_provider(&loc_str, crate::core::ProviderKind::Web);
+                        if next_provider.is_some() {
+                            let new_loc = format!("/{}", loc_str);
+                            res_headers.insert(axum::http::header::LOCATION, HeaderValue::from_str(&new_loc).unwrap());
+                        } else {
+                            // 3. 既不是显式资源也不是可处理的 Web 页面，执行内部静默跟随
+                            return Box::pin(do_proxy(state.clone(), Request::new(Body::empty()), loc_str, depth + 1, next_provider)).await;
+                        }
                     }
                 }
             }
@@ -144,7 +148,7 @@ pub async fn do_proxy(
             };
             
             if let Ok(body_str) = String::from_utf8(body_bytes.to_vec()) {
-                if let Some(rewritten) = p.rewrite_body(&path, body_str, &config) {
+                if let Some(rewritten) = p.rewrite_body(&path, body_str, &config, &req_headers) {
                     let mut builder = Response::builder().status(status);
                     *builder.headers_mut().unwrap() = res_headers;
                     builder = builder.header(axum::http::header::CONTENT_LENGTH, rewritten.len());
