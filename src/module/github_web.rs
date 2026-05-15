@@ -34,6 +34,10 @@ impl GithubWebProvider {
 }
 
 impl ProxyProvider for GithubWebProvider {
+    fn kind(&self) -> crate::core::ProviderKind {
+        crate::core::ProviderKind::Web
+    }
+
     fn matches(&self, _path: &str) -> bool {
         true
     }

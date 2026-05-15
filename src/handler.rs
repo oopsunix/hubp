@@ -63,14 +63,17 @@ pub async fn proxy_handler(
     let raw_path = raw_path.trim_start_matches('/');
     let target_path = raw_path.to_string();
 
-    // 1. 匹配 Provider
-    let provider = match state.find_provider(&target_path) {
-        Some(p) => p,
-        None => {
-            if !target_path.starts_with("http") {
-                return (StatusCode::FORBIDDEN, "Invalid input.").into_response();
+    // 1. 识别请求意图并匹配 Provider
+    // 策略：优先匹配 Explicit 类型（支持带 http 和不带 http 的域名路径），
+    //       若无匹配，则视为 Web 相对路径。
+    let (provider, _kind) = if let Some(p) = state.find_provider(&target_path, crate::core::ProviderKind::Explicit) {
+        (p, crate::core::ProviderKind::Explicit)
+    } else {
+        match state.find_provider(&target_path, crate::core::ProviderKind::Web) {
+            Some(p) => (p, crate::core::ProviderKind::Web),
+            None => {
+                return (StatusCode::NOT_FOUND, "No provider found for this path.").into_response();
             }
-            return (StatusCode::FORBIDDEN, "No provider found for this path.").into_response();
         }
     };
 

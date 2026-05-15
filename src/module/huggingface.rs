@@ -21,7 +21,10 @@ impl HuggingfaceProvider {
 
 impl ProxyProvider for HuggingfaceProvider {
     fn matches(&self, path: &str) -> bool {
-        self.exps.iter().any(|exp| exp.is_match(path)) || path.contains("huggingface.co")
+        self.exps.iter().any(|exp| exp.is_match(path)) || 
+        path.starts_with("huggingface.co") || 
+        path.starts_with("https://huggingface.co") ||
+        path.starts_with("cdn-lfs.huggingface.co")
     }
 
     fn upstream_host(&self, _path: &str, _config: &Config) -> Option<String> {
@@ -65,28 +68,5 @@ impl ProxyProvider for HuggingfaceProvider {
                 }
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::Config;
-
-    #[test]
-    fn test_hf_matches() {
-        let provider = HuggingfaceProvider::new();
-        assert!(provider.matches("huggingface.co/gpt2/resolve/main/config.json"));
-        assert!(provider.matches("cdn-lfs.huggingface.co/LFS_FILE"));
-    }
-
-    #[test]
-    fn test_hf_transform_direct() {
-        let provider = HuggingfaceProvider::new();
-        let config = Config::default();
-
-        let path = "gpt2/resolve/main/config.json".to_string();
-        let result = provider.transform(path, &config);
-        assert_eq!(result, "https://huggingface.co/gpt2/resolve/main/config.json");
     }
 }

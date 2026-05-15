@@ -222,8 +222,22 @@ pub async fn load_config() -> Result<Config, String> {
     Ok(config)
 }
 
+/// --- Provider 类型定义 ---
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ProviderKind {
+    /// 显式代理 (处理 /https://... 绝对 URL)
+    Explicit,
+    /// Web 反向代理 (处理 /user/repo 等相对路径)
+    Web,
+}
+
 /// --- Provider 接口定义 ---
 pub trait ProxyProvider: Send + Sync {
+    /// 声明 Provider 的类型 (默认为 Explicit)
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::Explicit
+    }
+
     fn matches(&self, path: &str) -> bool;
     fn transform(&self, path: String, config: &Config) -> String;
     fn extract_keywords(&self, path: &str) -> Option<Vec<String>>;
@@ -256,9 +270,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn find_provider(&self, path: &str) -> Option<Arc<dyn ProxyProvider>> {
+    pub fn find_provider(&self, path: &str, kind: ProviderKind) -> Option<Arc<dyn ProxyProvider>> {
         for provider in &self.providers {
-            if provider.matches(path) {
+            if provider.kind() == kind && provider.matches(path) {
                 return Some(provider.clone());
             }
         }

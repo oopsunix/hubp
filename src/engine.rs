@@ -96,12 +96,35 @@ pub async fn do_proxy(
     // 6. 处理重定向
     if let Some(location) = res_headers.get(axum::http::header::LOCATION) {
         if let Ok(loc_str) = location.to_str() {
-            let next_provider = state.find_provider(loc_str);
-            if next_provider.is_some() {
-                let new_loc = format!("/{}", loc_str);
-                res_headers.insert(axum::http::header::LOCATION, HeaderValue::from_str(&new_loc).unwrap());
-            } else {
-                return Box::pin(do_proxy(state.clone(), Request::new(Body::empty()), loc_str.to_string(), depth + 1, next_provider)).await;
+            let loc_str = loc_str.to_string();
+            
+            // 判定当前上下文类型
+            let current_kind = provider.as_ref().map(|p| p.kind()).unwrap_or(crate::core::ProviderKind::Explicit);
+
+            match current_kind {
+                crate::core::ProviderKind::Explicit => {
+                    // 如果是显式代理请求触发的重定向
+                    // 1. 尝试看是否有更精确的 Explicit Provider 认领
+                    let next_provider = state.find_provider(&loc_str, crate::core::ProviderKind::Explicit);
+                    
+                    // 2. 如果重定向目标也是绝对 URL (以 http 开头)，则直接服务器内部递归跳转
+                    //    这样即使跳转到 codeload 等未知域名，由于没有 Provider 认领，也会进入内部跳转逻辑。
+                    if loc_str.starts_with("http") {
+                        return Box::pin(do_proxy(state.clone(), Request::new(Body::empty()), loc_str, depth + 1, next_provider)).await;
+                    }
+                }
+                crate::core::ProviderKind::Web => {
+                    // 如果是 Web 浏览请求触发的重定向
+                    let next_provider = state.find_provider(&loc_str, crate::core::ProviderKind::Web);
+                    if next_provider.is_some() {
+                        // 如果有 Web Provider 认领（比如跳到了另一个 github 页面），改写为相对路径让浏览器跳
+                        let new_loc = format!("/{}", loc_str);
+                        res_headers.insert(axum::http::header::LOCATION, HeaderValue::from_str(&new_loc).unwrap());
+                    } else {
+                        // 否则内部跳转
+                        return Box::pin(do_proxy(state.clone(), Request::new(Body::empty()), loc_str, depth + 1, next_provider)).await;
+                    }
+                }
             }
         }
     }

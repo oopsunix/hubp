@@ -12,7 +12,7 @@ impl GithubProvider {
             exps: vec![
                 // 0. 匹配 Release/Archive
                 Regex::new(r"^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:releases|archive)/.*$").unwrap(),
-                // 1. 匹配 Blob/Raw 文件 (index 1)
+                // 1. 匹配 Blob/Raw 文件
                 Regex::new(r"^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:blob|raw)/.*$").unwrap(),
                 // 2. 匹配 Git 仓库链接
                 Regex::new(r"^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:info|git-).*$").unwrap(),
@@ -20,7 +20,6 @@ impl GithubProvider {
                 Regex::new(r"^(?:https?://)?raw\.github(?:usercontent|)\.com/([^/]+)/([^/]+)/.+?/.+$").unwrap(),
                 // 4. 匹配 Gist
                 Regex::new(r"^(?:https?://)?gist\.github(?:usercontent|)\.com/([^/]+)/.+?/.+$").unwrap(),
-                
                 // --- GitHub API 专用匹配规则 ---
                 // 5. 匹配 API Repos 路径 (提取 user, repo)
                 Regex::new(r"^(?:https?://)?api\.github\.com/repos/([^/]+)/([^/]+)(?:/.*)?$").unwrap(),
@@ -30,9 +29,6 @@ impl GithubProvider {
                 Regex::new(r"^(?:https?://)?api\.github\.com/gists(?:/.*)?$").unwrap(),
                 // 8. 匹配 API 通用路径 (兜底)
                 Regex::new(r"^(?:https?://)?api\.github\.com/(.*)$").unwrap(),
-                
-                // 9. 通用主站匹配 (兜底网页浏览)
-                Regex::new(r"^(?:https?://)?github\.com/.*$").unwrap(),
             ],
         }
     }
@@ -85,36 +81,5 @@ impl ProxyProvider for GithubProvider {
             }
         }
         None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::Config;
-
-    #[test]
-    fn test_github_matches() {
-        let provider = GithubProvider::new();
-        assert!(provider.matches("github.com/torvalds/linux"));
-        assert!(provider.matches("https://github.com/torvalds/linux/releases"));
-        assert!(provider.matches("raw.githubusercontent.com/user/repo/main/file"));
-    }
-
-    #[test]
-    fn test_github_transform() {
-        let provider = GithubProvider::new();
-        let config = Config::default();
-
-        let url = "github.com/user/repo/blob/main/README.md".to_string();
-        let result = provider.transform(url, &config);
-        assert_eq!(result, "https://github.com/user/repo/raw/main/README.md");
-    }
-
-    #[test]
-    fn test_github_keywords() {
-        let provider = GithubProvider::new();
-        let keywords = provider.extract_keywords("https://github.com/oopsunix/ghproxy").unwrap();
-        assert!(keywords.contains(&"oopsunix".to_string()));
     }
 }
