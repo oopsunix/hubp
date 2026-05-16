@@ -1,36 +1,30 @@
-<div align="center">
-<h1>hubp</h1>
+![hubp](https://socialify.git.ci/oopsunix/hubp/image?font=JetBrains+Mono&forks=1&issues=1&language=1&logo=https%3A%2F%2Favatars.githubusercontent.com%2Fu%2F133087009&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=Light)
 
-<p>hubp is a high-performance, multi-protocol proxy service written in Rust. It provides seamless acceleration and proxying for popular developer resources including GitHub, Docker Registry, and Hugging Face. Designed with efficiency and security in mind, hubp leverages the asynchronous power of [Axum](https://github.com/tokio-rs/axum) and [Tokio](https://github.com/tokio-rs/tokio).
+<!-- <p align="center">
+  <img src="./hubp.png" alt="hubp Icon" width="144" height="144" />
+</p> -->
+
+<h1 align="center">hubp</h1>
+
+<p align="center">hubp is a high-performance, multi-protocol proxy service written in Rust. It provides seamless acceleration and proxying for popular developer resources including GitHub, Docker Registry, and Hugging Face. Designed with efficiency and security in mind, hubp leverages the asynchronous power of <a href="https://github.com/tokio-rs/axum">Axum</a> and <a href="https://github.com/tokio-rs/tokio">Tokio</a>.
 </p>
 
-<p>
-  <a href="https://www.apache.org/licenses/LICENSE-2.0">
-    <img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat" alt="License">
-  </a>
-  <a href="https://github.com/oopsunix/hubp">
-    <img src="https://img.shields.io/github/stars/oopsunix/hubp?style=flat" alt="Stars">
-  </a>
-  <a href="https://github.com/oopsunix/hubp">
-    <img src="https://img.shields.io/github/forks/oopsunix/hubp?style=flat" alt="Forks">
-  </a>
-  <a href="https://github.com/oopsunix/hubp/releases">
-    <img src="https://img.shields.io/github/v/release/oopsunix/hubp?sort=semver" alt="Release">
-  </a>
+<p align="center">
+  <a href="https://github.com/oopsunix/hubp/releases"><img src="https://img.shields.io/github/v/release/oopsunix/hubp?style=flat-square&label=release&color=blue" alt="Release"></a>
+  <!-- <a href="https://github.com/oopsunix/hubp"><img src="https://img.shields.io/github/stars/oopsunix/hubp?style=flat-square&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/oopsunix/hubp"><img src="https://img.shields.io/github/forks/oopsunix/hubp?style=flat-square" alt="Forks"></a> -->
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat-square" alt="License"></a>
 </p>
 
-<div>
-
-English ｜ [中文](README_CN.md)
-
-</div>
-</div>
+<p align="center">
+<strong>English</strong> | <a href="README_CN.md">中文</a>
+</p>
 
 ---
 
-## 🚀 Core Features
+## ✨ Features
 
-- **Multi-Source Proxying**: 
+- **Multi-Source Proxying**:
     - **GitHub**: Accelerate access to Raw files, Releases, Archives, and Git clones.
     - **Docker Registry**: Transparent proxy for `docker.io`, `ghcr.io`, `gcr.io`, `quay.io`, and `k8s.io`.
     - **Hugging Face**: Speed up model and dataset downloads.
@@ -47,7 +41,7 @@ English ｜ [中文](README_CN.md)
 
 ---
 
-## 🛠️ Quick Start
+## 🚀 Quick Start
 
 ### Using Docker (Recommended)
 
@@ -103,7 +97,7 @@ access:
   white_list: [] # Allowed keywords/repos
   black_list:
     - "baduser/*"
-  
+
   # GeoIP Country Restriction
   geoip:
     enabled: false
@@ -216,10 +210,23 @@ cargo build --release
 
 ---
 
+## 💖 Contributors
+
+<a href="https://github.com/oopsunix/hubp/graphs/contributors">
+  <!-- CONTRIBUTORS-IMG:START -->
+  <img src="https://contrib.rocks/image?repo=oopsunix/hubp" />
+  <!-- CONTRIBUTORS-IMG:END -->
+</a>
+
+---
+
 ## 📜 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-Built with ❤️ by [oopsunix](https://github.com/oopsunix)
+<div align="center">
+  <p>If you like this project, give it a ⭐ to help others find it!</p>
+  <p>Built with ❤️ by <a href="https://github.com/oopsunix">oopsunix</a></p>
+</div>

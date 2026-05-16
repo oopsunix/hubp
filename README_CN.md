@@ -1,36 +1,30 @@
-<div align="center">
-<h1>hubp</h1>
+![hubp](https://socialify.git.ci/oopsunix/hubp/image?font=JetBrains+Mono&forks=1&issues=1&language=1&logo=https%3A%2F%2Favatars.githubusercontent.com%2Fu%2F133087009&name=1&owner=1&pattern=Plus&pulls=1&stargazers=1&theme=Light)
 
-<p> hubp 是一款使用 Rust 编写的高性能多协议代理服务。它为 GitHub、Docker Registry 和 Hugging Face 等常用开发者资源提供无缝的加速与代理功能。hubp 充分利用了 [Axum](https://github.com/tokio-rs/axum) 和 [Tokio](https://github.com/tokio-rs/tokio) 的异步特性，旨在提供极高的运行效率与安全性。
+<!-- <p align="center">
+  <img src="./hubp.png" alt="hubp Icon" width="144" height="144" />
+</p> -->
+
+<h1 align="center">hubp</h1>
+
+<p align="center"> hubp 是一款使用 Rust 编写的高性能多协议代理服务。它为 GitHub、Docker Registry 和 Hugging Face 等常用开发者资源提供无缝的加速与代理功能。hubp 充分利用了 <a href="https://github.com/tokio-rs/axum">Axum</a> 和 <a href="https://github.com/tokio-rs/tokio">Tokio</a> 的异步特性，旨在提供极高的运行效率与安全性。
 </p>
 
-<p>
-  <a href="https://www.apache.org/licenses/LICENSE-2.0">
-    <img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat" alt="License">
-  </a>
-  <a href="https://github.com/oopsunix/hubp">
-    <img src="https://img.shields.io/github/stars/oopsunix/hubp?style=flat" alt="Stars">
-  </a>
-  <a href="https://github.com/oopsunix/hubp">
-    <img src="https://img.shields.io/github/forks/oopsunix/hubp?style=flat" alt="Forks">
-  </a>
-  <a href="https://github.com/oopsunix/hubp/releases">
-    <img src="https://img.shields.io/github/v/release/oopsunix/hubp?sort=semver" alt="Release">
-  </a>
+<p align="center">
+  <a href="https://github.com/oopsunix/hubp/releases"><img src="https://img.shields.io/github/v/release/oopsunix/hubp?style=flat-square&label=release&color=blue" alt="Release"></a>
+  <!-- <a href="https://github.com/oopsunix/hubp"><img src="https://img.shields.io/github/stars/oopsunix/hubp?style=flat-square&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/oopsunix/hubp"><img src="https://img.shields.io/github/forks/oopsunix/hubp?style=flat-square" alt="Forks"></a> -->
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/github/license/oopsunix/hubp?style=flat-square" alt="License"></a>
 </p>
 
-<div>
-
-中文 ｜ [English](README.md)
-
-</div>
-</div>
+<p align="center">
+<a href="README.md">English</a> | <strong>中文</strong>
+</p>
 
 ---
 
-## 🚀 核心特性
+## ✨ 核心特性
 
-- **多源代理支持**: 
+- **多源代理支持**:
     - **GitHub**: 加速访问 Raw 文件、Release 资源、存档文件（Archive）以及 Git 克隆。
     - **Docker Registry**: 透明代理 `docker.io`、`ghcr.io`、`gcr.io`、`quay.io` 和 `registry.k8s.io`。
     - **Hugging Face**: 提升模型和数据集的下载速度。
@@ -47,7 +41,7 @@
 
 ---
 
-## 🛠️ 快速开始
+## 🚀 快速开始
 
 ### 使用 Docker (推荐)
 
@@ -103,7 +97,7 @@ access:
   white_list: [] # 允许访问的关键字/仓库
   black_list:
     - "baduser/*"
-  
+
   # GeoIP 国家限制
   geoip:
     enabled: false
@@ -216,10 +210,21 @@ cargo build --release
 
 ---
 
+## 💖 贡献者
+
+<a href="https://github.com/oopsunix/hubp/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=oopsunix/hubp" />
+</a>
+
+---
+
 ## 📜 开源协议
 
 本项目基于 [Apache License 2.0](LICENSE) 协议开源。
 
 ---
 
-Built with ❤️ by [oopsunix](https://github.com/oopsunix)
+<div align="center">
+  <p>如果你觉得这个项目对你有帮助，不妨给它点个⭐，让更多人发现这款工具！</p>
+  <p>Built with ❤️ by <a href="https://github.com/oopsunix">oopsunix</a></p>
+</div>
