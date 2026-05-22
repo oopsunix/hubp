@@ -2,7 +2,6 @@ services:
   hubp:
     image: oopsunix/hubp:latest
     # image：ghcr.io/oopsunix/hubp:latest
-    # image: registry.cn-hangzhou.aliyuncs.com/oopsunix/hubp:latest
     container_name: hubp
     restart: unless-stopped
     volumes:
