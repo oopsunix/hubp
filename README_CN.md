@@ -45,8 +45,8 @@
 
 ### 使用 Docker (推荐)
 
-1. 创建 `config.yaml` 配置文件（参考 [配置说明](#-配置说明)）。
-2. 使用以下 `docker-compose.yml` 模板：
+1. 创建 `config.yml` 配置文件 — 模板参考 [`config.example.yml`](config.example.yml)。
+2. 使用以下 [`docker-compose.yml`](docker-compose.yml) 模板：
 
 ```yaml
 services:
@@ -55,7 +55,7 @@ services:
     container_name: hubp
     restart: unless-stopped
     volumes:
-      - ./config.yaml:/app/config.yaml
+      - ./config.yml:/app/config.yml
     ports:
       - "45000:45000"
 ```
@@ -70,8 +70,8 @@ docker-compose up -d
 请确保您已安装 Rust 工具链。
 
 ```bash
-git clone https://github.com/oopsunix/ghproxy.git
-cd ghproxy
+git clone https://github.com/oopsunix/hubp.git
+cd hubp
 cargo build --release
 ./target/release/hubp
 ```
@@ -80,7 +80,7 @@ cargo build --release
 
 ## ⚙️ 配置说明
 
-`hubp` 通过 `config.yaml` 进行配置。
+`hubp` 通过 `config.yml` 进行配置。
 
 <details>
 <summary>点击展开配置模板</summary>
@@ -104,16 +104,18 @@ access:
     allowedCountries: ["CN"]
     databasePath: "GeoLite2-Country.mmdb"
     databaseUrl: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb"
-    databaseUpdateDays: 30
+    databaseUpdateDays: 30 # 数据库更新间隔（天）
 
 # --- 速率限制 ---
 request_limit:
-  limit_rate: 1000       # 每个周期内的最大请求数
-  periodHours: 3.0       # 时间窗口（小时）
-  white_list:            # 绕过速率限制的信任 IP
+  limit_rate: 1000         # 每个周期内的最大请求数（ 0 表示不限制）
+  limit_size: 10240        # 单次响应最大体积（单位：MB，0 表示不限制）
+  periodHours: 3.0         # 时间窗口（小时）
+  white_list:              # 绕过速率限制的信任 IP
     - "127.0.0.1"
+    - "172.17.0.0/24"      # Docker 默认网桥网段
     - "192.168.1.0/24"
-  black_list: []         # 封禁的 IP
+  black_list: []           # 封禁的 IP
 
 # --- Docker 缓存 ---
 docker:

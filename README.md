@@ -45,8 +45,8 @@
 
 ### Using Docker (Recommended)
 
-1. Create a `config.yaml` file (see [Configuration](#-configuration)).
-2. Use the following `docker-compose.yml`:
+1. Create a `config.yml` file — a template is available at [`config.example.yml`](config.example.yml).
+2. Use the [`docker-compose.yml`](docker-compose.yml) template:
 
 ```yaml
 services:
@@ -55,7 +55,7 @@ services:
     container_name: hubp
     restart: unless-stopped
     volumes:
-      - ./config.yaml:/app/config.yaml
+      - ./config.yml:/app/config.yml
     ports:
       - "45000:45000"
 ```
@@ -70,8 +70,8 @@ docker-compose up -d
 Ensure you have the Rust toolchain installed.
 
 ```bash
-git clone https://github.com/oopsunix/ghproxy.git
-cd ghproxy
+git clone https://github.com/oopsunix/hubp.git
+cd hubp
 cargo build --release
 ./target/release/hubp
 ```
@@ -80,7 +80,7 @@ cargo build --release
 
 ## ⚙️ Configuration
 
-`hubp` is configured via `config.yaml`.
+`hubp` is configured via `config.yml`.
 
 <details>
 <summary>View Configuration Template</summary>
@@ -104,16 +104,18 @@ access:
     allowedCountries: ["CN"]
     databasePath: "GeoLite2-Country.mmdb"
     databaseUrl: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb"
-    databaseUpdateDays: 30
+    databaseUpdateDays: 30 # Interval for database updates (in days)
 
 # --- Rate Limiting ---
 request_limit:
-  limit_rate: 1000       # Max requests per period
-  periodHours: 3.0       # Time window in hours
-  white_list:            # Trusted IPs that bypass rate limits
+  limit_rate: 1000         # Max requests per period (0 disables limiting)
+  limit_size: 10240        # Max response size per request in MB (0 disables limiting)
+  periodHours: 3.0         # Time window in hours
+  white_list:              # Trusted IPs that bypass rate limits
     - "127.0.0.1"
+    - "172.17.0.0/24"      # Docker default bridge network
     - "192.168.1.0/24"
-  black_list: []         # Banned IPs
+  black_list: []           # Banned IPs
 
 # --- Docker Cache ---
 docker:
