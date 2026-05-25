@@ -5,47 +5,16 @@ use axum::{
     body::Body,
 };
 use chrono::Utc;
-use std::{net::{SocketAddr, IpAddr}, sync::Arc, str::FromStr};
+use std::{net::SocketAddr, sync::Arc};
 use tracing::info;
-use ipnet::IpNet;
 
 use crate::core::AppState;
 use crate::engine::{do_proxy, check_list};
+use crate::utils::{normalize_url, is_internal_ip, is_ip_match};
 
 /// 首页处理器
 pub async fn index_handler() -> impl IntoResponse {
     (StatusCode::OK, "Have fun!").into_response()
-}
-
-/// 辅助函数：校验 IP 是否匹配列表
-fn is_ip_match(ip: IpAddr, list: &[String]) -> bool {
-    for item in list {
-        if let Ok(net) = IpNet::from_str(item) {
-            if net.contains(&ip) {
-                return true;
-            }
-        }
-        if let Ok(target_ip) = IpAddr::from_str(item) {
-            if target_ip == ip {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-/// 辅助函数：检查是否为局域网/私有 IP
-fn is_internal_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => {
-            v4.is_loopback() || v4.is_private() || v4.is_link_local()
-        }
-        IpAddr::V6(v6) => {
-            v6.is_loopback() || 
-            (v6.segments()[0] & 0xfe00) == 0xfc00 || // Unique Local Address (fc00::/7)
-            (v6.segments()[0] & 0xffc0) == 0xfe80    // Link-Local Address (fe80::/10)
-        }
-    }
 }
 
 /// 代理处理器
@@ -61,7 +30,7 @@ pub async fn proxy_handler(
         raw_path.push_str(&query);
     }
     let raw_path = raw_path.trim_start_matches('/');
-    let target_path = raw_path.to_string();
+    let target_path = normalize_url(raw_path);
 
     // 1. 识别请求意图并匹配 Provider
     // 策略：优先匹配 Explicit 类型（支持带 http 和不带 http 的域名路径），

@@ -271,8 +271,10 @@ pub struct AppState {
 
 impl AppState {
     pub fn find_provider(&self, path: &str, kind: ProviderKind) -> Option<Arc<dyn ProxyProvider>> {
+        // 匹配前执行前导斜杠清理
+        let clean_path = path.trim_start_matches('/');
         for provider in &self.providers {
-            if provider.kind() == kind && provider.matches(path) {
+            if provider.kind() == kind && provider.matches(clean_path) {
                 return Some(provider.clone());
             }
         }

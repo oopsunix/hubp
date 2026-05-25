@@ -4,6 +4,7 @@ mod engine;
 mod handler;
 mod route;
 mod tasks;
+mod utils;
 
 use dashmap::DashMap;
 use std::{

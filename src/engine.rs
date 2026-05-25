@@ -7,6 +7,7 @@ use axum::{
 };
 use std::sync::Arc;
 use crate::core::{AppState, ProxyProvider};
+use crate::utils::normalize_url;
 
 /// 核心代理转发引擎
 pub async fn do_proxy(
@@ -20,6 +21,9 @@ pub async fn do_proxy(
         return (StatusCode::LOOP_DETECTED, "Too many redirects.").into_response();
     }
     
+    // 规范化目标 URL
+    let target_url = normalize_url(&target_url);
+
     let path = req.uri().path().to_string(); 
     let method = req.method().clone();
     let req_headers = req.headers().clone();
