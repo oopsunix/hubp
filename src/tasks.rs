@@ -157,7 +157,7 @@ fn spawn_geoip_updater(state: Arc<AppState>) {
 /// 启动配置自动重载任务
 pub fn spawn_config_reloader(state: Arc<AppState>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(600));
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
         loop {
             interval.tick().await;
             match load_config().await {
