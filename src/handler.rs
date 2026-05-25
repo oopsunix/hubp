@@ -168,13 +168,16 @@ pub async fn proxy_handler(
             let now = Utc::now();
             let ip_str = client_ip.to_string();
             
-            let mut entry = state.ip_requests.entry(ip_str).or_insert(Vec::new());
-            entry.retain(|t| now.signed_duration_since(*t).num_seconds() as f64 <= period_hours * 3600.0);
+            // limit_rate <= 0 表示不限制
+            if limit_rate > 0 {
+                let mut entry = state.ip_requests.entry(ip_str).or_insert(Vec::new());
+                entry.retain(|t| now.signed_duration_since(*t).num_seconds() as f64 <= period_hours * 3600.0);
 
-            if entry.len() as i64 >= limit_rate {
-                return (StatusCode::TOO_MANY_REQUESTS, "Too Many Requests.").into_response();
+                if entry.len() as i64 >= limit_rate {
+                    return (StatusCode::TOO_MANY_REQUESTS, "Too Many Requests.").into_response();
+                }
+                entry.push(now);
             }
-            entry.push(now);
         }
     }
 

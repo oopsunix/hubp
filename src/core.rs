@@ -93,10 +93,11 @@ fn default_ttl() -> String { "20m".to_string() }
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct RegistryMapping {
+    #[serde(default)]
     pub upstream: String,
-    #[serde(rename = "authHost")]
+    #[serde(rename = "authHost", default)]
     pub auth_host: String,
-    #[serde(rename = "authType")]
+    #[serde(rename = "authType", default)]
     pub _auth_type: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -106,7 +107,9 @@ fn default_true() -> bool { true }
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct RequestLimitConfig {
+    #[serde(default)]
     pub limit_rate: i64,
+    #[serde(default)]
     pub limit_size: i64,
     #[serde(rename = "periodHours", default = "default_period_hours")]
     pub period_hours: f64,
@@ -131,46 +134,48 @@ access:
   #   - HTTP 带认证: "http://user:pass@127.0.0.1:7890"
   #   - SOCKS5 无认证: "socks5://127.0.0.1:1080"
   #   - SOCKS5 带认证: "socks5://user:pass@127.0.0.1:1080"
-  proxy: ""
-  white_list: []
-  black_list:
-    - "baduser/badrepo"
-    - "*/badrepo"
-    - "baduser/*"
-  
-  # GeoIP 国家限制 (默认只允许中国 IP 访问)
-  geoip:
-    enabled: false
-    databasePath: "GeoLite2-Country.mmdb"
-    databaseUrl: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb"
-    databaseUpdateDays: 30
-    allowedCountries:
-      - "CN"
+  proxy: ""              # 留空表示直连，不走上游代理
 
-# --- 路由与速率限制配置 ---
+  # 访问白名单/黑名单，关键词支持通配符 *，匹配路径中的 user/repo 等信息
+  white_list: []         # 白名单（空表示不限制）
+  black_list:            # 黑名单
+    - "baduser/badrepo"  # 禁止访问 baduser/badrepo
+    - "*/badrepo"        # 禁止访问所有用户下的 badrepo
+    - "baduser/*"        # 禁止访问 baduser 的所有仓库
+
+  # GeoIP 国家限制
+  geoip:
+    enabled: false                          # 是否启用 GeoIP 国家限制
+    databasePath: "GeoLite2-Country.mmdb"   # GeoIP 数据库文件路径
+    databaseUrl: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-Country.mmdb"  # 数据库下载地址
+    databaseUpdateDays: 30                  # 数据库自动更新周期（天）
+    allowedCountries:                       # 允许访问的国家代码列表
+      - "CN"                                # CN = 中国
+
+# --- 请求频率与大小限制 ---
 request_limit:
-  limit_rate: 1000
-  limit_size: 10240
-  periodHours: 3.0
-  white_list:
-    - "127.0.0.1"
-    - "172.17.0.0/24"
-    - "192.168.1.0/24"
-  black_list:
+  limit_rate: 1000       # 周期内单 IP 最大请求数（0 表示不限制）
+  limit_size: 10240      # 单次响应最大体积（单位：MB，0 表示不限制）
+  periodHours: 3.0       # 统计周期（小时）
+  white_list:            # IP 白名单（白名单中的 IP 不受限流影响）
+    - "127.0.0.1"          # 本机地址
+    - "172.17.0.0/24"      # Docker 默认网段
+    - "192.168.1.0/24"     # 内网网段（按需调整）
+  black_list:            # IP 黑名单（黑名单中的 IP 直接拒绝访问）
     - "192.168.167.1"
 
 # --- Docker 镜像代理专项配置 ---
 docker:
-  tokenCache:
-    enabled: true
-    defaultTTL: "20m"
+  tokenCache:            # Docker Token 缓存配置
+    enabled: true        # 是否启用 Token/Manifest 缓存
+    defaultTTL: "20m"    # 缓存有效期，单位：m（分钟）、h（小时）
 
   registries:
     "docker.io":
-      enabled: true
-      upstream: "registry-1.docker.io"
-      authHost: "auth.docker.io/token"
-      authType: "docker"
+      enabled: true                      # 是否启用该 Registry 代理
+      upstream: "registry-1.docker.io"   # 上游 Registry 地址
+      authHost: "auth.docker.io/token"   # 认证服务地址
+      authType: "docker"                 # 认证类型
     "ghcr.io":
       enabled: true
       upstream: "ghcr.io"

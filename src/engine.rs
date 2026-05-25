@@ -72,9 +72,12 @@ pub async fn do_proxy(
     if let Some(content_length) = headers.get(axum::http::header::CONTENT_LENGTH) {
         if let Ok(size) = content_length.to_str().unwrap_or("0").parse::<i64>() {
             let config = state.config.read().await;
-            let limit_size = config.request_limit.limit_size * 1024 * 1024;
-            if size > limit_size {
-                return (StatusCode::PAYLOAD_TOO_LARGE, "File too large.").into_response();
+            let limit_size = config.request_limit.limit_size;
+            if limit_size > 0 {
+                let limit_bytes = limit_size * 1024 * 1024;
+                if size > limit_bytes {
+                    return (StatusCode::PAYLOAD_TOO_LARGE, "File too large.").into_response();
+                }
             }
         }
     }
