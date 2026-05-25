@@ -218,6 +218,7 @@ pub async fn load_config() -> Result<Config, String> {
             tokio::fs::write(&template_path, CONFIG_TEMPLATE)
                 .await
                 .map_err(|e| format!("Failed to write config template at {}: {}", template_path, e))?;
+            println!("Configuration file not found. A template has been generated at '{}'.", template_path);
             existing_path = Some(template_path);
             break;
         }
@@ -226,7 +227,6 @@ pub async fn load_config() -> Result<Config, String> {
     let config_path = match existing_path {
         Some(path) => path,
         None => {
-            // 若 config/ 目录已存在（Docker 挂载），则在该目录内生成模板
             let config_dir = std::path::Path::new("config");
             let default_path = if config_dir.is_dir() {
                 "config/config.yaml"
@@ -236,7 +236,8 @@ pub async fn load_config() -> Result<Config, String> {
             tokio::fs::write(default_path, CONFIG_TEMPLATE)
                 .await
                 .map_err(|e| format!("Failed to write config template: {}", e))?;
-            return Err(format!("NOT_FOUND:{}", default_path));
+            println!("Configuration file '{}' not found. A template has been generated.", default_path);
+            default_path.to_string()
         }
     };
 
