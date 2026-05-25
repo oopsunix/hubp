@@ -29,9 +29,10 @@ async fn main() {
     // 1. 加载初始配置
     let initial_config = match load_config().await {
         Ok(cfg) => cfg,
-        Err(e) if e == "NOT_FOUND" => {
-            println!("Configuration file 'config.yaml' not found. A template has been generated.");
-            println!("Please edit 'config.yaml' and restart the program.");
+        Err(e) if e.starts_with("NOT_FOUND:") => {
+            let config_path = &e["NOT_FOUND:".len()..];
+            println!("Configuration file '{}' not found. A template has been generated.", config_path);
+            println!("Please edit '{}' and restart the program.", config_path);
             std::process::exit(0);
         }
         Err(e) => {

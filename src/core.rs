@@ -199,12 +199,26 @@ docker:
 "#;
 
 pub async fn load_config() -> Result<Config, String> {
-    let paths = ["config.yaml", "config.yml"];
+    // 搜索优先级：当前目录 → config/ 子目录
+    let paths = [
+        "config.yaml", "config.yml",
+        "config/config.yaml", "config/config.yml",
+    ];
     let mut existing_path = None;
 
     for path in &paths {
-        if std::path::Path::new(path).exists() {
-            existing_path = Some(*path);
+        let p = std::path::Path::new(path);
+        if p.is_file() {
+            existing_path = Some(path.to_string());
+            break;
+        }
+        // 检测到目录时（如 Docker 挂载空目录为文件），尝试写入模板
+        if p.exists() && p.is_dir() {
+            let template_path = format!("{}/config.yaml", path.trim_end_matches(".yaml").trim_end_matches(".yml"));
+            tokio::fs::write(&template_path, CONFIG_TEMPLATE)
+                .await
+                .map_err(|e| format!("Failed to write config template at {}: {}", template_path, e))?;
+            existing_path = Some(template_path);
             break;
         }
     }
@@ -212,15 +226,21 @@ pub async fn load_config() -> Result<Config, String> {
     let config_path = match existing_path {
         Some(path) => path,
         None => {
-            let default_path = "config.yaml";
+            // 若 config/ 目录已存在（Docker 挂载），则在该目录内生成模板
+            let config_dir = std::path::Path::new("config");
+            let default_path = if config_dir.is_dir() {
+                "config/config.yaml"
+            } else {
+                "config.yaml"
+            };
             tokio::fs::write(default_path, CONFIG_TEMPLATE)
                 .await
                 .map_err(|e| format!("Failed to write config template: {}", e))?;
-            return Err("NOT_FOUND".to_string());
+            return Err(format!("NOT_FOUND:{}", default_path));
         }
     };
 
-    let content = tokio::fs::read_to_string(config_path)
+    let content = tokio::fs::read_to_string(&config_path)
         .await
         .map_err(|e| e.to_string())?;
     let config: Config = serde_yaml::from_str(&content).map_err(|e| e.to_string())?;
