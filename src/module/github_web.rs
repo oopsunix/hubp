@@ -9,6 +9,35 @@ pub struct GithubWebProvider {
     clone_url_re: Regex,
 }
 
+/// 敏感路径前缀（身份验证/账户相关），禁止通过代理访问
+const SENSITIVE_PATHS: &[&str] = &[
+    "login", "signup", "settings", "join", "sessions",
+    "auth", "logout", "password_reset", "account",
+];
+
+/// 代理路径到上游源域名的路由映射表
+/// (代理路径前缀, 上游域名, 上游路径前缀)
+/// 上游路径前缀为空表示该上游的资源路径不包含代理子目录（如 avatars），
+/// 不为空表示上游 URL 中已包含该子目录（如 githubassets 的资源路径中已含 assets/）
+const ROUTE_TABLE: &[(&str, &str, &str)] = &[
+    ("avatars/",  "avatars.githubusercontent.com",   ""),
+    ("assets/",   "github.githubassets.com",         "assets/"),
+    ("favicons/", "github.githubassets.com",         "favicons/"),
+    ("images/",   "github.githubassets.com",         "images/"),
+    ("fonts/",    "github.githubassets.com",         "fonts/"),
+    ("camo/",     "camo.githubusercontent.com",      ""),
+];
+
+/// 查询路径匹配的资源文件上游域名
+fn resource_upstream(path: &str) -> Option<&'static str> {
+    ROUTE_TABLE.iter().find(|(prefix, _, _)| path.starts_with(prefix)).map(|(_, upstream, _)| *upstream)
+}
+
+/// 判断路径是否为资源文件路径前缀
+pub fn is_resource_prefix(path: &str) -> bool {
+    ROUTE_TABLE.iter().any(|(prefix, _, _)| path.starts_with(prefix))
+}
+
 impl GithubWebProvider {
     pub fn new() -> Self {
         Self {
@@ -18,26 +47,8 @@ impl GithubWebProvider {
     }
 
     fn is_sensitive(&self, path: &str) -> bool {
-
-        let p = path.to_lowercase();
-        let base_path = p.split('?').next().unwrap_or("");
-        base_path.starts_with("login") || 
-        base_path.starts_with("signup") || 
-        base_path.starts_with("settings") || 
-        base_path.starts_with("join") || 
-        base_path.starts_with("sessions") || 
-        base_path.starts_with("auth") ||
-        base_path.starts_with("logout") ||
-        base_path.starts_with("password_reset") ||
-        base_path.starts_with("account")
-    }
-
-    fn is_static_extension(&self, path: &str) -> bool {
-        let exts = [
-            ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", 
-            ".woff", ".woff2", ".ttf", ".eot", ".map"
-        ];
-        exts.iter().any(|&ext| path.ends_with(ext))
+        let base_path = path.split('?').next().unwrap_or(path).to_lowercase();
+        SENSITIVE_PATHS.iter().any(|&prefix| base_path.starts_with(prefix))
     }
 }
 
@@ -52,12 +63,8 @@ impl ProxyProvider for GithubWebProvider {
     }
 
     fn upstream_host(&self, path: &str, _config: &Config) -> Option<String> {
-        if path.starts_with("avatars/") {
-            return Some("avatars.githubusercontent.com".to_string());
-        }
-        let asset_prefixes = ["assets/", "favicons/", "images/", "fonts/"];
-        if asset_prefixes.iter().any(|&p| path.starts_with(p)) || self.is_static_extension(path) {
-            return Some("github.githubassets.com".to_string());
+        if let Some(upstream) = resource_upstream(path) {
+            return Some(upstream.to_string());
         }
         Some("github.com".to_string())
     }
@@ -76,12 +83,15 @@ impl ProxyProvider for GithubWebProvider {
     }
 
     fn transform(&self, path: String, _config: &Config) -> String {
-        if path.starts_with("avatars/") {
-            return format!("https://avatars.githubusercontent.com/{}", &path[8..]);
-        }
-        let asset_prefixes = ["assets/", "favicons/", "images/", "fonts/"];
-        if asset_prefixes.iter().any(|&p| path.starts_with(p)) || (self.is_static_extension(&path) && path.contains('/')) {
-            return format!("https://github.githubassets.com/{}", path);
+        if let Some((proxy_prefix, upstream, upstream_prefix)) = ROUTE_TABLE.iter().find(|(prefix, _, _)| path.starts_with(prefix)) {
+            let upstream_path = if upstream_prefix.is_empty() {
+                // upstream 路径不包含子目录（如 avatars），需要去除代理前缀
+                &path[proxy_prefix.len()..]
+            } else {
+                // upstream 路径已包含子目录（如 githubassets/assets/），保持原样
+                &path
+            };
+            return format!("https://{}/{}", upstream, upstream_path);
         }
         let root_files = ["manifest.json", "robots.txt", "favicon.ico", "favicon.svg"];
         if root_files.iter().any(|&f| path == f) {
@@ -101,13 +111,19 @@ impl ProxyProvider for GithubWebProvider {
     fn handle_response(&self, headers: &mut HeaderMap, _config: &Config) {
         if let Some(location) = headers.get(axum::http::header::LOCATION) {
             if let Ok(loc_str) = location.to_str() {
-                if loc_str.starts_with("https://github.com/") {
-                    let new_loc = format!("/{}", &loc_str[19..]);
-                    if let Ok(v) = axum::http::HeaderValue::from_str(&new_loc) {
-                        headers.insert(axum::http::header::LOCATION, v);
-                    }
-                } else if loc_str.starts_with("https://github.githubassets.com/") {
-                    let new_loc = format!("/{}", &loc_str[32..]);
+                let new_loc = if let Some(rest) = loc_str.strip_prefix("https://github.com/") {
+                    Some(format!("/{}", rest))
+                } else {
+                    ROUTE_TABLE.iter().find_map(|(proxy_prefix, upstream, upstream_prefix)| {
+                        let domain = if upstream_prefix.is_empty() {
+                            format!("https://{}/", upstream)
+                        } else {
+                            format!("https://{}/{}", upstream, upstream_prefix)
+                        };
+                        loc_str.strip_prefix(&domain).map(|rest| format!("/{}{}", proxy_prefix, rest))
+                    })
+                };
+                if let Some(new_loc) = new_loc {
                     if let Ok(v) = axum::http::HeaderValue::from_str(&new_loc) {
                         headers.insert(axum::http::header::LOCATION, v);
                     }
@@ -145,11 +161,19 @@ impl ProxyProvider for GithubWebProvider {
         }
 
         // 2. 执行常规的网页相对路径替换
-        new_body = new_body
-            .replace("https://github.com/", "/")
-            .replace("https://github.githubassets.com/", "/")
-            .replace("https://avatars.githubusercontent.com/", "/avatars/")
-            .replace("https://raw.githubusercontent.com/", "/https://raw.githubusercontent.com/");
+        //    基于路由映射表将上游 URL 替换为代理相对路径
+        for &(proxy_prefix, upstream, upstream_prefix) in ROUTE_TABLE {
+            let domain_url = if upstream_prefix.is_empty() {
+                format!("https://{}/", upstream)
+            } else {
+                format!("https://{}/{}", upstream, upstream_prefix)
+            };
+            let proxy_path = format!("/{}", proxy_prefix);
+            new_body = new_body.replace(&domain_url, &proxy_path);
+        }
+        new_body = new_body.replace("https://github.com/", "/");
+        // raw.githubusercontent.com 需要带协议头的特殊路径，确保浏览器能解析为绝对 URL
+        new_body = new_body.replace("https://raw.githubusercontent.com/", "/https://raw.githubusercontent.com/");
             
         // 3. 补全 Release/Archive 下载链接
         new_body = self.download_re.replace_all(&new_body, r#"href="/https://github.com/$1/$2/$3/"#).to_string();

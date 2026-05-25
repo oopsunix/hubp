@@ -10,6 +10,7 @@ use tracing::info;
 
 use crate::core::AppState;
 use crate::engine::{do_proxy, check_list};
+use crate::module::github_web::is_resource_prefix;
 use crate::utils::{normalize_url, is_internal_ip, is_ip_match};
 
 /// 首页处理器
@@ -33,18 +34,38 @@ pub async fn proxy_handler(
     let target_path = normalize_url(raw_path);
 
     // 1. 识别请求意图并匹配 Provider
-    // 策略：优先匹配 Explicit 类型（支持带 http 和不带 http 的域名路径），
-    //       若无匹配，则视为 Web 相对路径。
-    let (provider, _kind) = if let Some(p) = state.find_provider(&target_path, crate::core::ProviderKind::Explicit) {
-        (p, crate::core::ProviderKind::Explicit)
-    } else {
-        match state.find_provider(&target_path, crate::core::ProviderKind::Web) {
-            Some(p) => (p, crate::core::ProviderKind::Web),
-            None => {
-                return (StatusCode::NOT_FOUND, "No provider found for this path.").into_response();
+    // 策略：优先匹配 Explicit，失败则返回错误信息便于排障
+    let (provider, kind) = {
+        // 路径不含域名特征且非 Docker 专用前缀，直接跳过 Explicit 匹配
+        let needs_explicit = target_path.starts_with("http")
+            || target_path.starts_with("v2/")
+            || target_path.starts_with("token")
+            || target_path.split('/').next().map_or(false, |s| s.contains('.'));
+
+        if !needs_explicit {
+            match state.find_provider(&target_path, crate::core::ProviderKind::Web) {
+                Some(p) => (p, crate::core::ProviderKind::Web),
+                None => {
+                    return (StatusCode::NOT_FOUND, format!("No provider found for path: /{}", target_path)).into_response();
+                }
             }
+        } else if let Some(p) = state.find_provider(&target_path, crate::core::ProviderKind::Explicit) {
+            (p, crate::core::ProviderKind::Explicit)
+        } else {
+            return (StatusCode::NOT_FOUND, format!("No provider found for path: /{}", target_path)).into_response();
         }
     };
+
+    // CDN 资源快速路径：由 GithubWebProvider 的 HTML 改写产生的 CDN 资源，
+    // 直接从 CDN 分发，跳过校验链
+    if kind == crate::core::ProviderKind::Web && is_resource_prefix(&target_path)
+    {
+        let target_url = {
+            let config = state.config.read().await;
+            provider.transform(target_path.clone(), &config)
+        };
+        return do_proxy(state.clone(), req, target_url, 0, Some(provider.clone())).await;
+    }
 
     // 2. 国家地理限制校验 (仅针对启用该功能的请求)
     {
